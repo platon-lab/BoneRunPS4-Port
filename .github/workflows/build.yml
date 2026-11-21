@@ -37,6 +37,18 @@ jobs:
           python3 tools/make_sfo.py
           python3 tools/make_icon.py
 
+      - name: Install clang and lld if missing
+        run: |
+          if ! command -v clang >/dev/null 2>&1 || ! command -v ld.lld >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y clang lld
+          fi
+          clang --version
+          ld.lld --version | head -1
+          echo "Toolchain dir: $OO_PS4_TOOLCHAIN"
+          ls "$OO_PS4_TOOLCHAIN" || true
+          ls "$OO_PS4_TOOLCHAIN/bin/linux" || true
+
       - name: Build eboot.bin (как в samples/hello_world/Makefile)
         run: |
           set -e
@@ -44,12 +56,12 @@ jobs:
           mkdir -p build/ps4
           for src in src/game.c src/main_ps4.c; do
             obj="build/ps4/$(basename "$src" .c).o"
-            clang-12 --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c \
+            clang --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c \
               -isysroot "$T" -isystem "$T/include" -Isrc -o "$obj" "$src"
           done
-          ld.lld-12 build/ps4/*.o -m elf_x86_64 -pie --script "$T/link.x" \
-            --eh-frame-hdr -L"$T/lib" -lc -lkernel "$T/lib/crt1.o" \
-            -o build/ps4/bone-run.elf
+          ld.lld build/ps4/*.o -m elf_x86_64 -pie --script "$T/link.x" \
+            --eh-frame-hdr -L"$T/lib" -lc -lkernel -lScePad -lSceUserService -lSceAudioOut \
+            "$T/lib/crt1.o" -o build/ps4/bone-run.elf
           "$T/bin/linux/create-fself" -in=build/ps4/bone-run.elf \
             -out=build/ps4/bone-run.oelf --eboot build/ps4/eboot.bin \
             --paid 0x3800000000000011
