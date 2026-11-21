@@ -18,6 +18,7 @@ jobs:
           apt-get install -y git zip clang lld python2.7
           git clone --depth 1 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /tmp/oo
           cp -r /tmp/oo/samples/hello_world /tmp/hello_world
+          cp /tmp/oo/samples/piglet/sce_sys/about/right.sprx /tmp/hello_world/sce_sys/about/right.sprx
 
       - name: Build hello_world PKG (официальный Makefile из samples)
         working-directory: /tmp/hello_world

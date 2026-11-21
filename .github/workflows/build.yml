@@ -101,7 +101,9 @@ jobs:
           STAGE=build/ps4/stage
           rm -rf "$STAGE" && mkdir -p "$STAGE/sce_sys"
           cp build/ps4/eboot.bin "$STAGE/"
+          mkdir -p "$STAGE/sce_sys/about"
           cp pkg/sce_sys/param.sfo pkg/sce_sys/icon0.png "$STAGE/sce_sys/"
+          cp pkg/sce_sys/about/right.sprx "$STAGE/sce_sys/about/"
           python3 - "$CONTENT_ID" "$STAGE/pkg.gp4" <<'PYEOF'
           import sys
           content_id, out = sys.argv[1], sys.argv[2]
@@ -121,11 +123,14 @@ jobs:
             </volume>
             <files img_no="0">
               <file targ_path="eboot.bin" orig_path="eboot.bin" />
+              <file targ_path="sce_sys/about/right.sprx" orig_path="sce_sys/about/right.sprx" />
               <file targ_path="sce_sys/param.sfo" orig_path="sce_sys/param.sfo" />
               <file targ_path="sce_sys/icon0.png" orig_path="sce_sys/icon0.png" />
             </files>
             <rootdir>
-              <dir targ_name="sce_sys" />
+              <dir targ_name="sce_sys">
+                <dir targ_name="about" />
+              </dir>
             </rootdir>
           </psproject>
           """ % content_id
