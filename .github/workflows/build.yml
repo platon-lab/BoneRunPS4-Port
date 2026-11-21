@@ -20,7 +20,7 @@ jobs:
     needs: test
     runs-on: ubuntu-24.04
     container:
-      image: openorbisofficial/toolchain:v0.5.4
+      image: openorbisofficial/toolchain:latest
       options: --user root
     env:
       OO_PS4_TOOLCHAIN: /lib/OpenOrbisSDK
