@@ -71,7 +71,18 @@ jobs:
             exit 1
           fi
           # create-fself в образе нет, используем make_fself.py из репозитория OpenOrbis
-          python3 "$T/scripts/make_fself.py" build/ps4/bone-run.elf build/ps4/eboot.bin \
+          # make_fself.py из OpenOrbis написан под Python 2: сигнатуры ELF/SELF - str, а файл читается как bytes.
+          # Делаем копию, где эти строки стали bytes (b'...'), и запускаем её.
+          python3 - "$T/scripts/make_fself.py" build/ps4/make_fself_py3.py <<'PYEOF'
+          import re, sys
+          src, dst = sys.argv[1], sys.argv[2]
+          text = open(src, encoding="utf-8").read()
+          text = re.sub(r"MAGIC = '((?:\\x[0-9A-Fa-f]{2})+|[^']*)'",
+                        lambda m: "MAGIC = b'" + m.group(1) + "'", text)
+          open(dst, "w", encoding="utf-8").write(text)
+          print("patched:", dst)
+          PYEOF
+          python3 build/ps4/make_fself_py3.py build/ps4/bone-run.elf build/ps4/eboot.bin \
             --paid 0x3800000000000011
           ls -la build/ps4/eboot.bin
 
