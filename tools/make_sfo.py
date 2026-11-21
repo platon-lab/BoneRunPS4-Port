@@ -14,7 +14,9 @@ PARAMS = {
     "ATTRIBUTE": ("int", 0),
     "CATEGORY": ("str", "gd"),              # gd = игра
     "CONTENT_ID": ("str", "UP0001-TITO00001_00-BONERUN000000001"),
+    "DOWNLOAD_DATA_SIZE": ("int", 0),       # как в samples/hello_world/Makefile
     "FORMAT": ("str", "obs"),
+    "SYSTEM_VER": ("int", 0),               # как в samples/hello_world/Makefile
     "TITLE": ("str", "Bone Run"),
     "TITLE_ID": ("str", "TITO00001"),
     "VERSION": ("str", "01.00"),
