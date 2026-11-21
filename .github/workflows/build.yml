@@ -4,6 +4,10 @@ on:
   push:
   workflow_dispatch:
 
+env:
+  TITLE_ID: TITO00001
+  CONTENT_ID: UP0001-TITO00001_00-BONERUN000000001
+
 jobs:
   test:
     runs-on: ubuntu-24.04
@@ -11,3 +15,66 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run game logic tests
         run: make test
+
+  build-ps4:
+    needs: test
+    runs-on: ubuntu-24.04
+    container:
+      image: openorbisofficial/toolchain:v0.5.4
+      options: --user root
+    env:
+      OO_PS4_TOOLCHAIN: /lib/OpenOrbisSDK
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install python3 for tools
+        run: |
+          apt-get update
+          apt-get install -y python3 zip
+
+      - name: Generate param.sfo and icon0.png
+        run: |
+          python3 tools/make_sfo.py
+          python3 tools/make_icon.py
+
+      - name: Build eboot.bin (как в samples/hello_world/Makefile)
+        run: |
+          set -e
+          T="$OO_PS4_TOOLCHAIN"
+          mkdir -p build/ps4
+          for src in src/game.c src/main_ps4.c; do
+            obj="build/ps4/$(basename "$src" .c).o"
+            clang-12 --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c \
+              -isysroot "$T" -isystem "$T/include" -Isrc -o "$obj" "$src"
+          done
+          ld.lld-12 build/ps4/*.o -m elf_x86_64 -pie --script "$T/link.x" \
+            --eh-frame-hdr -L"$T/lib" -lc -lkernel "$T/lib/crt1.o" \
+            -o build/ps4/bone-run.elf
+          "$T/bin/linux/create-fself" -in=build/ps4/bone-run.elf \
+            -out=build/ps4/bone-run.oelf --eboot build/ps4/eboot.bin \
+            --paid 0x3800000000000011
+
+      - name: Build PKG
+        run: |
+          set -e
+          T="$OO_PS4_TOOLCHAIN"
+          STAGE=build/ps4/stage
+          rm -rf "$STAGE" && mkdir -p "$STAGE/sce_sys"
+          cp build/ps4/eboot.bin "$STAGE/"
+          cp pkg/sce_sys/param.sfo pkg/sce_sys/icon0.png "$STAGE/sce_sys/"
+          cd "$STAGE"
+          "$T/bin/linux/create-gp4" -out pkg.gp4 --content-id="$CONTENT_ID" \
+            --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png"
+          "$T/bin/linux/PkgTool.Core" pkg_build pkg.gp4 .
+          ls -la
+
+      - name: Zip package
+        run: |
+          cd build/ps4/stage
+          zip -r ../../../bone-run-ps4.zip .
+
+      - name: Upload zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: bone-run-ps4
+          path: bone-run-ps4.zip
