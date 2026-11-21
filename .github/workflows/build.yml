@@ -62,9 +62,10 @@ jobs:
           ld.lld build/ps4/*.o -m elf_x86_64 -pie --script "$T/link.x" \
             --eh-frame-hdr -L"$T/lib" -lc -lkernel -lScePad -lSceUserService -lSceAudioOut \
             "$T/lib/crt1.o" -o build/ps4/bone-run.elf
-          "$T/bin/linux/create-fself" -in=build/ps4/bone-run.elf \
-            -out=build/ps4/bone-run.oelf --eboot build/ps4/eboot.bin \
+          # create-fself в образе нет, используем make_fself.py из репозитория OpenOrbis
+          python3 "$T/scripts/make_fself.py" build/ps4/bone-run.elf build/ps4/eboot.bin \
             --paid 0x3800000000000011
+          ls -la build/ps4/eboot.bin
 
       - name: Build PKG
         run: |
