@@ -1,0 +1,54 @@
+#!/bin/sh
+# Обёртка: create-gp4 из OpenOrbis нет в образе, генерируем gp4 сами
+OUT=""; CID=""; FILES=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -out) OUT="$2"; shift ;;
+    --content-id=*) CID="${1#--content-id=}" ;;
+    --files) FILES="$2"; shift ;;
+  esac
+  shift
+done
+python3 - "$OUT" "$CID" "$FILES" <<'PYEOF'
+import sys, os
+out, cid, files = sys.argv[1], sys.argv[2], sys.argv[3].split()
+lines = []
+dirs = set()
+for f in files:
+    lines.append('    <file targ_path="%s" orig_path="%s" />' % (f, f))
+    d = os.path.dirname(f)
+    while d:
+        dirs.add(d)
+        d = os.path.dirname(d)
+def tree(prefix, depth=0):
+    out_lines = []
+    children = sorted(x for x in dirs if os.path.dirname(x) == prefix)
+    for c in children:
+        name = os.path.basename(c)
+        sub = tree(c, depth + 1)
+        out_lines.append('<dir targ_name="%s">%s</dir>' % (name, sub) if sub else '<dir targ_name="%s" />' % name)
+    return "".join(out_lines)
+rootdirs = tree("")
+gp4 = """<?xml version="1.0"?>
+<psproject fmt="gp4" version="1000">
+  <volume>
+    <volume_type>pkg_ps4_app</volume_type>
+    <volume_id>PS4VOLUME</volume_id>
+    <volume_ts>2026-11-21 00:00:00</volume_ts>
+    <package content_id="%s" passcode="00000000000000000000000000000000" storage_type="digital50" app_type="full" />
+    <chunk_info chunk_count="1" scenario_count="1">
+      <chunks><chunk id="0" layer_no="0" label="Chunk #0" /></chunks>
+      <scenarios default_id="0">
+        <scenario id="0" type="sp" initial_chunk_count="1" label="Scenario #0">0</scenario>
+      </scenarios>
+    </chunk_info>
+  </volume>
+  <files img_no="0">
+%s
+  </files>
+  <rootdir>%s</rootdir>
+</psproject>
+""" % (cid, "\n".join(lines), rootdirs)
+open(out, "w", encoding="utf-8").write(gp4)
+print("gp4 written:", out, "files:", len(lines))
+PYEOF

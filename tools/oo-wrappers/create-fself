@@ -1,0 +1,17 @@
+#!/bin/sh
+# Обёртка: create-fself из OpenOrbis нет в образе, используем make_fself.py (Python 2.7)
+IN=""; OUT=""; PAID="0x3100000000000002"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -in=*) IN="${1#-in=}" ;;
+    -out=*) ;;
+    --eboot) OUT="$2"; shift ;;
+    --paid) PAID="$2"; shift ;;
+  esac
+  shift
+done
+TMP="$(mktemp)"
+cp "$IN" "$TMP"
+# stock ld.lld пишет ET_DYN (3); make_fself принимает ET_SCE_DYNAMIC (0xFE18)
+python3 -c "import struct,sys;p=sys.argv[1];b=bytearray(open(p,'rb').read());t=struct.unpack_from('<H',b,16)[0];struct.pack_into('<H',b,16,0xFE18) if t==3 else None;open(p,'wb').write(b)" "$TMP"
+python2.7 "$OO_PS4_TOOLCHAIN/scripts/make_fself.py" "$TMP" "$OUT" --paid "$PAID"
