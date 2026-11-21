@@ -17,19 +17,19 @@ jobs:
           apt-get update
           apt-get install -y git zip clang lld python2.7
           git clone --depth 1 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /tmp/oo
-          cp -r /tmp/oo/samples/hello_world /tmp/hello_world
-          cp /tmp/oo/samples/piglet/sce_sys/about/right.sprx /tmp/hello_world/sce_sys/about/right.sprx
+          cp -r /tmp/oo/samples /tmp/samples
+          cp /tmp/oo/samples/piglet/sce_sys/about/right.sprx /tmp/samples/hello_world/sce_sys/about/right.sprx
 
       - name: Build hello_world PKG (официальный Makefile из samples)
-        working-directory: /tmp/hello_world
+        working-directory: /tmp/samples/hello_world
         run: |
-          make || true
+          make
           ls -la
-          ls -la $(find . -name "*.pkg" -o -name "eboot.bin") 2>/dev/null || true
+          find . -name "*.pkg" -o -name "eboot.bin"
 
       - name: Upload hello_world output
         uses: actions/upload-artifact@v4
         with:
           name: hello-world-control
-          path: /tmp/hello_world
+          path: /tmp/samples/hello_world
           if-no-files-found: warn
