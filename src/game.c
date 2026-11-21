@@ -39,6 +39,7 @@ static int rects_overlap(float ax, float ay, float aw, float ah,
 
 void game_update(Game *g, Input in)
 {
+    g->events = 0;
     if (g->state == STATE_OVER) {
         if (in.restart) {
             game_init(g, g->seed + 1u);
@@ -50,6 +51,7 @@ void game_update(Game *g, Input in)
     if (in.jump && g->on_ground) {
         g->vy = JUMP_V;
         g->on_ground = 0;
+        g->events |= EV_JUMP;
     }
     g->vy += GRAVITY;
     g->tito_y += g->vy;
@@ -86,14 +88,17 @@ void game_update(Game *g, Input in)
         if (!b->passed && b->x + BONE_W < TITO_X) {
             b->passed = 1;
             g->score++;
+            g->events |= EV_SCORE;
         }
         if (rects_overlap(TITO_X, g->tito_y, TITO_W, TITO_H,
                           b->x, (float)(GROUND_Y - BONE_H), BONE_W, BONE_H)) {
             b->active = 0;
             g->lives--;
+            g->events |= EV_HIT;
             if (g->lives <= 0) {
                 g->lives = 0;
                 g->state = STATE_OVER;
+                g->events |= EV_OVER;
                 return;
             }
         }

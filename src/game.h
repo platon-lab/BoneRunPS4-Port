@@ -7,6 +7,12 @@
 #define SCREEN_H 540
 #define MAX_BONES 6
 
+/* события кадра: для звука, вибрации и подсветки */
+#define EV_JUMP   (1u << 0)
+#define EV_SCORE  (1u << 1)
+#define EV_HIT    (1u << 2)
+#define EV_OVER   (1u << 3)
+
 typedef enum { STATE_PLAY = 0, STATE_OVER = 1 } GameState;
 
 typedef struct {
@@ -31,6 +37,7 @@ typedef struct {
     int spawn_timer;
     GameState state;
     uint32_t seed;
+    uint32_t events; /* EV_* за последний кадр */
 } Game;
 
 void game_init(Game *g, uint32_t seed);
