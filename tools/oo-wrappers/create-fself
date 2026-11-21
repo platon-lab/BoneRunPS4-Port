@@ -14,4 +14,17 @@ TMP="$(mktemp)"
 cp "$IN" "$TMP"
 # stock ld.lld пишет ET_DYN (3); make_fself принимает ET_SCE_DYNAMIC (0xFE18)
 python3 -c "import struct,sys;p=sys.argv[1];b=bytearray(open(p,'rb').read());t=struct.unpack_from('<H',b,16)[0];struct.pack_into('<H',b,16,0xFE18) if t==3 else None;open(p,'wb').write(b)" "$TMP"
-python2.7 "$OO_PS4_TOOLCHAIN/scripts/make_fself.py" "$TMP" "$OUT" --paid "$PAID"
+LOG="$(mktemp)"
+set +e
+python2.7 "$OO_PS4_TOOLCHAIN/scripts/make_fself.py" "$TMP" "$OUT" --paid "$PAID" >"$LOG" 2>&1
+RC=$?
+set -e
+if [ "$RC" -ne 0 ]; then
+  echo "===== make_fself.py упал, код $RC. Вывод скрипта (последние строки):"
+  tail -n 40 "$LOG"
+  echo "===== ПРИЧИНА (строки с error/Traceback/Exception):"
+  grep -iE "error|traceback|exception|unsupported|invalid" "$LOG" | tail -n 10 || true
+  echo "===== КОНЕЦ ПРИЧИНЫ"
+  exit "$RC"
+fi
+cat "$LOG"
