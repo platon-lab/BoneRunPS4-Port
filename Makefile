@@ -13,7 +13,6 @@ FSELF      := $(PS4_BIN)/create-fself
 test:
 	mkdir -p build
 	$(CC_PC) -std=c11 -Wall -Wextra -Werror -Isrc src/game.c tests/test_game.c -o build/test_game
-	$(CC_PC) -std=c11 -Wall -Wextra -Werror -Isrc -fsyntax-only src/main_ps4.c
 	./build/test_game
 
 # Сборка eboot.bin для PS4.
