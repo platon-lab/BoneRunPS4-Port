@@ -102,10 +102,43 @@ jobs:
           rm -rf "$STAGE" && mkdir -p "$STAGE/sce_sys"
           cp build/ps4/eboot.bin "$STAGE/"
           cp pkg/sce_sys/param.sfo pkg/sce_sys/icon0.png "$STAGE/sce_sys/"
+          python3 - "$CONTENT_ID" "$STAGE/pkg.gp4" <<'PYEOF'
+          import sys
+          content_id, out = sys.argv[1], sys.argv[2]
+          gp4 = """<?xml version="1.0"?>
+          <psproject fmt="gp4" version="1000">
+            <volume>
+              <volume_type>pkg_ps4_app</volume_type>
+              <volume_id>PS4VOLUME</volume_id>
+              <volume_ts>2026-11-21 00:00:00</volume_ts>
+              <package content_id="%s" passcode="00000000000000000000000000000000" storage_type="digital50" app_type="full" />
+              <chunk_info chunk_count="1" scenario_count="1">
+                <chunks><chunk id="0" layer_no="0" label="Chunk #0" /></chunks>
+                <scenarios default_id="0">
+                  <scenario id="0" type="sp" initial_chunk_count="1" label="Scenario #0">0</scenario>
+                </scenarios>
+              </chunk_info>
+            </volume>
+            <files img_no="0">
+              <file targ_path="eboot.bin" orig_path="eboot.bin" />
+              <file targ_path="sce_sys/param.sfo" orig_path="sce_sys/param.sfo" />
+              <file targ_path="sce_sys/icon0.png" orig_path="sce_sys/icon0.png" />
+            </files>
+            <rootdir>
+              <dir targ_name="sce_sys" />
+            </rootdir>
+          </psproject>
+          """ % content_id
+          open(out, "w", encoding="utf-8").write(gp4)
+          print("gp4 written:", out)
+          PYEOF
           cd "$STAGE"
-          "$T/bin/linux/create-gp4" -out pkg.gp4 --content-id="$CONTENT_ID" \
-            --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png"
-          "$T/bin/linux/PkgTool.Core" pkg_build pkg.gp4 .
+          if [ -x "$T/bin/linux/PkgTool.Core" ]; then
+            "$T/bin/linux/PkgTool.Core" pkg_build pkg.gp4 .
+          else
+            echo "PkgTool.Core не найден в образе OpenOrbis: PKG не собран."
+            echo "Папка stage готова: eboot.bin, sce_sys/param.sfo, sce_sys/icon0.png, pkg.gp4"
+          fi
           ls -la
 
       - name: Zip package
