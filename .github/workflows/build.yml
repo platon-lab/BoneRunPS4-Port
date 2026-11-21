@@ -49,6 +49,12 @@ jobs:
           ls "$OO_PS4_TOOLCHAIN" || true
           ls "$OO_PS4_TOOLCHAIN/bin/linux" || true
 
+      - name: Install python2.7 (make_fself.py из OpenOrbis написан под Python 2)
+        run: |
+          apt-get update
+          apt-get install -y python2.7
+          python2.7 --version
+
       - name: Build eboot.bin (как в samples/hello_world/Makefile)
         run: |
           set -e
@@ -62,27 +68,29 @@ jobs:
           ld.lld build/ps4/*.o -m elf_x86_64 -pie --script "$T/link.x" \
             --eh-frame-hdr -L"$T/lib" -lc -lkernel -lScePad -lSceUserService -lSceAudioOut \
             "$T/lib/crt1.o" -o build/ps4/bone-run.elf
-          echo "=== проверка ELF после линковки ==="
-          ls -la build/ps4/
-          od -A x -t x1z -N 16 build/ps4/bone-run.elf || true
+
+          # Проверка, что это ELF
           MAGIC=$(od -An -tx1 -N4 build/ps4/bone-run.elf | tr -d " \n")
           if [ "$MAGIC" != "7f454c46" ]; then
             echo "ОШИБКА: bone-run.elf не ELF, первые байты: $MAGIC"
             exit 1
           fi
-          # create-fself в образе нет, используем make_fself.py из репозитория OpenOrbis
-          # make_fself.py из OpenOrbis написан под Python 2: сигнатуры ELF/SELF - str, а файл читается как bytes.
-          # Делаем копию, где эти строки стали bytes (b'...'), и запускаем её.
-          python3 - "$T/scripts/make_fself.py" build/ps4/make_fself_py3.py <<'PYEOF'
-          import re, sys
-          src, dst = sys.argv[1], sys.argv[2]
-          text = open(src, encoding="utf-8").read()
-          text = re.sub(r"MAGIC = '((?:\\x[0-9A-Fa-f]{2})+|[^']*)'",
-                        lambda m: "MAGIC = b'" + m.group(1) + "'", text)
-          open(dst, "w", encoding="utf-8").write(text)
-          print("patched:", dst)
+
+          # make_fself.py принимает только ET_EXEC или ET_SCE_*; stock ld.lld пишет ET_DYN (3).
+          # Ставим ET_SCE_DYNAMIC (0xFE18), как делает линковщик OpenOrbis.
+          python3 - build/ps4/bone-run.elf <<'PYEOF'
+          import struct, sys
+          p = sys.argv[1]
+          b = bytearray(open(p, "rb").read())
+          t = struct.unpack_from("<H", b, 16)[0]
+          print("e_type before:", hex(t))
+          if t == 3:
+              struct.pack_into("<H", b, 16, 0xFE18)
+              open(p, "wb").write(b)
+          print("e_type after:", hex(struct.unpack_from("<H", b, 16)[0]))
           PYEOF
-          python3 build/ps4/make_fself_py3.py build/ps4/bone-run.elf build/ps4/eboot.bin \
+
+          python2.7 "$OO_PS4_TOOLCHAIN/scripts/make_fself.py" build/ps4/bone-run.elf build/ps4/eboot.bin \
             --paid 0x3800000000000011
           ls -la build/ps4/eboot.bin
 
